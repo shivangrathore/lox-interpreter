@@ -66,7 +66,7 @@ func main() {
 		case SEMICOLON:
 			fmt.Println("SEMICOLON ; null")
 		default:
-			fmt.Printf("[line %d] Error: Unexpected character: %c\n", lines, current)
+			fmt.Fprintf(os.Stderr, "[line %d] Error: Unexpected character: %c\n", lines, current)
 			lexical_errors = true
 		}
 	}
