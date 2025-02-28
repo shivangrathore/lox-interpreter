@@ -40,6 +40,7 @@ func main() {
 
 	fileContents := string(rawfileContents)
 	lines := 1
+	lexical_errors := false
 	for _, current := range fileContents {
 		switch current {
 		case '\n':
@@ -66,7 +67,11 @@ func main() {
 			fmt.Println("SEMICOLON ; null")
 		default:
 			fmt.Printf("[line %d] Error: Unexpected character: %c\n", lines, current)
+			lexical_errors = true
 		}
 	}
 	fmt.Println("EOF  null")
+	if lexical_errors {
+		os.Exit(65)
+	}
 }
