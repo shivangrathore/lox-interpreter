@@ -38,5 +38,5 @@ func main() {
 			fmt.Println("RIGHT_PAREN ) null")
 		}
 	}
-	fmt.Println("EOF null")
+	fmt.Println("EOF  null")
 }
