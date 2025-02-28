@@ -39,8 +39,11 @@ func main() {
 	}
 
 	fileContents := string(rawfileContents)
+	lines := 1
 	for _, current := range fileContents {
 		switch current {
+		case '\n':
+			lines++
 		case LEFT_PAREN:
 			fmt.Println("LEFT_PAREN ( null")
 		case RIGHT_PAREN:
@@ -61,6 +64,8 @@ func main() {
 			fmt.Println("MINUS - null")
 		case SEMICOLON:
 			fmt.Println("SEMICOLON ; null")
+		default:
+			fmt.Printf("[line %d] Error: Unexpected character: %c\n", lines, current)
 		}
 	}
 	fmt.Println("EOF  null")
