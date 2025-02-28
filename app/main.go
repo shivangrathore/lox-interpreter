@@ -52,6 +52,17 @@ func main() {
 			}
 			continue
 		}
+
+		if current == '!' {
+			if len(fileContents) > i+1 && fileContents[i+1] == '=' {
+				fmt.Println("BANG_EQUAL != null")
+				i++
+			} else {
+				fmt.Println("BANG ! null")
+			}
+			continue
+		}
+
 		switch current {
 		case '\n':
 			lines++
