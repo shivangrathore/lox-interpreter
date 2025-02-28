@@ -41,7 +41,17 @@ func main() {
 	fileContents := string(rawfileContents)
 	lines := 1
 	lexical_errors := false
-	for _, current := range fileContents {
+	for i := 0; i < len(fileContents); i++ {
+		current := rune(fileContents[i])
+		if current == '=' {
+			if len(fileContents) > i+1 && fileContents[i+1] == '=' {
+				fmt.Println("EQUAL_EQUAL == null")
+				i++
+			} else {
+				fmt.Println("EQUAL = null")
+			}
+			continue
+		}
 		switch current {
 		case '\n':
 			lines++
@@ -70,6 +80,7 @@ func main() {
 			lexical_errors = true
 		}
 	}
+
 	fmt.Println("EOF  null")
 	if lexical_errors {
 		os.Exit(65)
