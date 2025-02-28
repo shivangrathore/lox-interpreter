@@ -14,6 +14,7 @@ const (
 	DOT         rune = '.'
 	COMMA       rune = ','
 	PLUS        rune = '+'
+	MINUS       rune = '-'
 )
 
 func main() {
@@ -55,6 +56,8 @@ func main() {
 			fmt.Println("COMMA , null")
 		case PLUS:
 			fmt.Println("PLUS + null")
+		case MINUS:
+			fmt.Println("MINUS - null")
 		}
 	}
 	fmt.Println("EOF  null")
