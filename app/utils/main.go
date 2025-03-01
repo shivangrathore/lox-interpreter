@@ -1,0 +1,10 @@
+package utils
+
+func IsDigit(c rune) bool {
+	switch c {
+	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+		return true
+	default:
+		return false
+	}
+}
