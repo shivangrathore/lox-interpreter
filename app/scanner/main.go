@@ -3,6 +3,7 @@ package scanner
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/codecrafters-io/interpreter-starter-go/app/utils"
 )
@@ -78,7 +79,7 @@ func NextToken(s *Scanner) (*Token, error) {
 		isDec := false
 		for len(s.fileContents) > s.currentIdx {
 			if rune(s.fileContents[s.currentIdx]) == '.' {
-				if len(s.fileContents) > s.currentIdx+1 && utils.IsDigit(rune(s.fileContents[s.currentIdx+1])) {
+				if len(s.fileContents) > s.currentIdx+1 && utils.IsDigit(rune(s.fileContents[s.currentIdx+1])) && !isDec {
 					isDec = true
 				} else {
 					break
@@ -86,14 +87,51 @@ func NextToken(s *Scanner) (*Token, error) {
 			} else if !utils.IsDigit(rune(s.fileContents[s.currentIdx])) {
 				break
 			}
-			lexeme += string(s.fileContents[s.currentIdx])
+			digChar := rune(s.fileContents[s.currentIdx])
+			lexeme += string(digChar)
 			s.currentIdx++
 		}
-		literal := lexeme
-		if !isDec {
-			literal += ".0"
+		integer := 0.0
+		fraction := 0.0
+		fractionDigits := 1.0
+		isFraction := false
+		for _, c := range lexeme {
+			if c == '.' {
+				isFraction = true
+				continue
+			}
+			dig := float64(9 - (int('9') - int(c)))
+			if isFraction {
+				fractionDigits *= 10
+				fraction = fraction*10 + dig
+			} else {
+				integer = integer*10 + dig
+			}
 		}
-		return NewToken(NUMBER, lexeme, &literal), nil
+
+		literal := integer + (fraction / fractionDigits)
+		literalString := ""
+		{
+			str := fmt.Sprintf("%f", literal)
+			parts := strings.Split(str, ".")
+			if len(parts) == 1 {
+				literalString = parts[0] + ".0"
+				return NewToken(NUMBER, lexeme, &literalString), nil
+			}
+
+			integerPart := parts[0]
+			fractionPart := parts[1]
+
+			fractionPart = strings.TrimRight(fractionPart, "0")
+
+			if len(fractionPart) == 0 {
+				literalString = integerPart + ".0"
+				return NewToken(NUMBER, lexeme, &literalString), nil
+			} else {
+				literalString = integerPart + "." + fractionPart
+				return NewToken(NUMBER, lexeme, &literalString), nil
+			}
+		}
 
 	case '\n':
 		s.lines++
