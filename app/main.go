@@ -30,5 +30,5 @@ func main() {
 	tokenScanner := scanner.NewScanner(rawfileContents)
 	tokenScanner.Scan()
 	fmt.Println("EOF  null")
-	os.Exit(tokenScanner.ExitCode)
+	os.Exit(tokenScanner.ExitCode())
 }
