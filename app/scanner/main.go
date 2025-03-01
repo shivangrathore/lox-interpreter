@@ -102,7 +102,7 @@ func NextToken(s *Scanner) (*Token, error) {
 			}
 			currStr += string(char)
 		}
-		return nil, nil
+		return nil, fmt.Errorf("[line %d] Error: Unterminated string.\n", s.lines)
 
 	case '.':
 		return NewToken(DOT, "."), nil
