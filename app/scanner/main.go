@@ -3,6 +3,8 @@ package scanner
 import (
 	"fmt"
 	"os"
+
+	"github.com/codecrafters-io/interpreter-starter-go/app/utils"
 )
 
 // Token Type
@@ -32,6 +34,7 @@ const (
 	LESS_EQUAL    TokenType = "LESS_EQUAL"
 	SLASH         TokenType = "SLASH"
 	STRING        TokenType = "STRING"
+	NUMBER        TokenType = "NUMBER"
 )
 
 type Scanner struct {
@@ -44,6 +47,7 @@ type Scanner struct {
 type Token struct {
 	tokenType TokenType
 	lexeme    string
+	literal   *string
 }
 
 func (s *Scanner) ExitCode() int {
@@ -54,8 +58,8 @@ func NewScanner(fileContents []byte) *Scanner {
 	return &Scanner{fileContents: fileContents, currentIdx: 0, exitCode: 0, lines: 1}
 }
 
-func NewToken(tokenType TokenType, lexeme string) *Token {
-	return &Token{tokenType: tokenType, lexeme: lexeme}
+func NewToken(tokenType TokenType, lexeme string, literal *string) *Token {
+	return &Token{tokenType: tokenType, lexeme: lexeme, literal: literal}
 }
 
 func NextToken(s *Scanner) (*Token, error) {
@@ -65,18 +69,43 @@ func NextToken(s *Scanner) (*Token, error) {
 	case '=':
 		if len(s.fileContents) > s.currentIdx && rune(s.fileContents[s.currentIdx]) == '=' {
 			s.currentIdx++
-			return NewToken(EQUAL_EQUAL, "=="), nil
+			return NewToken(EQUAL_EQUAL, "==", nil), nil
 		}
-		return NewToken(EQUAL, "="), nil
+		return NewToken(EQUAL, "=", nil), nil
+
+	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+		lexeme := string(current)
+		isDec := false
+		for len(s.fileContents) > s.currentIdx {
+			if rune(s.fileContents[s.currentIdx]) == '.' {
+				if len(s.fileContents) > s.currentIdx+1 && utils.IsDigit(rune(s.fileContents[s.currentIdx+1])) {
+					isDec = true
+				} else {
+					break
+				}
+			} else if !utils.IsDigit(rune(s.fileContents[s.currentIdx])) {
+				break
+			}
+			lexeme += string(s.fileContents[s.currentIdx])
+			s.currentIdx++
+		}
+		literal := lexeme
+		if !isDec {
+			literal += ".0"
+		}
+		return NewToken(NUMBER, lexeme, &literal), nil
+
 	case '\n':
 		s.lines++
 		return nil, nil
+
 	case '!':
 		if len(s.fileContents) > s.currentIdx && rune(s.fileContents[s.currentIdx]) == '=' {
 			s.currentIdx++
-			return NewToken(BANG_EQUAL, "!="), nil
+			return NewToken(BANG_EQUAL, "!=", nil), nil
 		}
-		return NewToken(BANG, "!"), nil
+		return NewToken(BANG, "!", nil), nil
+
 	case '/':
 		if len(s.fileContents) > s.currentIdx && rune(s.fileContents[s.currentIdx]) == '/' {
 			s.currentIdx++
@@ -85,7 +114,7 @@ func NextToken(s *Scanner) (*Token, error) {
 			}
 			return nil, nil
 		}
-		return NewToken(SLASH, "/"), nil
+		return NewToken(SLASH, "/", nil), nil
 
 	case '\t', ' ':
 		return nil, nil
@@ -96,7 +125,7 @@ func NextToken(s *Scanner) (*Token, error) {
 			char := rune(s.fileContents[s.currentIdx])
 			s.currentIdx++
 			if char == '"' {
-				return NewToken(STRING, currStr), nil
+				return NewToken(STRING, fmt.Sprintf("\"%s\"", currStr), &currStr), nil
 			} else if char == '\n' {
 				return nil, fmt.Errorf("[line %d] Error: Unterminated string.\n", s.lines)
 			}
@@ -105,37 +134,37 @@ func NextToken(s *Scanner) (*Token, error) {
 		return nil, fmt.Errorf("[line %d] Error: Unterminated string.\n", s.lines)
 
 	case '.':
-		return NewToken(DOT, "."), nil
+		return NewToken(DOT, ".", nil), nil
 	case ',':
-		return NewToken(COMMA, ","), nil
+		return NewToken(COMMA, ",", nil), nil
 	case '+':
-		return NewToken(PLUS, "+"), nil
+		return NewToken(PLUS, "+", nil), nil
 	case '-':
-		return NewToken(MINUS, "-"), nil
+		return NewToken(MINUS, "-", nil), nil
 	case ';':
-		return NewToken(SEMICOLON, ";"), nil
+		return NewToken(SEMICOLON, ";", nil), nil
 	case '(':
-		return NewToken(LEFT_PAREN, "("), nil
+		return NewToken(LEFT_PAREN, "(", nil), nil
 	case ')':
-		return NewToken(RIGHT_PAREN, ")"), nil
+		return NewToken(RIGHT_PAREN, ")", nil), nil
 	case '{':
-		return NewToken(LEFT_BRACE, "{"), nil
+		return NewToken(LEFT_BRACE, "{", nil), nil
 	case '}':
-		return NewToken(RIGHT_BRACE, "}"), nil
+		return NewToken(RIGHT_BRACE, "}", nil), nil
 	case '*':
-		return NewToken(STAR, "*"), nil
+		return NewToken(STAR, "*", nil), nil
 	case '<':
 		if len(s.fileContents) > s.currentIdx && rune(s.fileContents[s.currentIdx]) == '=' {
 			s.currentIdx++
-			return NewToken(LESS_EQUAL, "<="), nil
+			return NewToken(LESS_EQUAL, "<=", nil), nil
 		}
-		return NewToken(LESS, "<"), nil
+		return NewToken(LESS, "<", nil), nil
 	case '>':
 		if len(s.fileContents) > s.currentIdx && rune(s.fileContents[s.currentIdx]) == '=' {
 			s.currentIdx++
-			return NewToken(GREATER_EQUAL, ">="), nil
+			return NewToken(GREATER_EQUAL, ">=", nil), nil
 		}
-		return NewToken(GREATER, ">"), nil
+		return NewToken(GREATER, ">", nil), nil
 
 	default:
 		return nil, fmt.Errorf("[line %d] Error: Unexpected character: %c\n", s.lines, current)
@@ -149,11 +178,11 @@ func (s *Scanner) Scan() {
 			fmt.Fprintf(os.Stderr, "%v", err.Error())
 			s.exitCode = 65
 		} else if token != nil {
-			if token.tokenType == STRING {
-				fmt.Printf("%s \"%s\" %s\n", token.tokenType, token.lexeme, token.lexeme)
-			} else {
-				fmt.Printf("%s %v null\n", token.tokenType, token.lexeme)
+			literal := "null"
+			if token.literal != nil {
+				literal = *token.literal
 			}
+			fmt.Printf("%s %s %s\n", token.tokenType, token.lexeme, literal)
 		}
 	}
 }
