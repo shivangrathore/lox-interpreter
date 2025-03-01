@@ -112,9 +112,9 @@ func NextToken(s *Scanner) (*Token, error) {
 	}
 }
 
-func (s Scanner) Scan() {
+func (s *Scanner) Scan() {
 	for s.currentIdx < len(s.fileContents) {
-		token, err := NextToken(&s)
+		token, err := NextToken(s)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v", err.Error())
 			s.exitCode = 65
