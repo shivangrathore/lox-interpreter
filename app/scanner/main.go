@@ -31,6 +31,7 @@ const (
 	LESS          TokenType = "LESS"
 	LESS_EQUAL    TokenType = "LESS_EQUAL"
 	SLASH         TokenType = "SLASH"
+	STRING        TokenType = "STRING"
 )
 
 type Scanner struct {
@@ -89,6 +90,20 @@ func NextToken(s *Scanner) (*Token, error) {
 	case '\t', ' ':
 		return nil, nil
 
+	case '"':
+		currStr := ""
+		for s.currentIdx < len(s.fileContents) {
+			char := rune(s.fileContents[s.currentIdx])
+			s.currentIdx++
+			if char == '"' {
+				return NewToken(STRING, currStr), nil
+			} else if char == '\n' {
+				return nil, fmt.Errorf("[line %d] Error: Unterminated string.\n", s.lines)
+			}
+			currStr += string(char)
+		}
+		return nil, nil
+
 	case '.':
 		return NewToken(DOT, "."), nil
 	case ',':
@@ -134,7 +149,11 @@ func (s *Scanner) Scan() {
 			fmt.Fprintf(os.Stderr, "%v", err.Error())
 			s.exitCode = 65
 		} else if token != nil {
-			fmt.Printf("%s %v null\n", token.tokenType, token.lexeme)
+			if token.tokenType == STRING {
+				fmt.Printf("%s \"%s\" %s\n", token.tokenType, token.lexeme, token.lexeme)
+			} else {
+				fmt.Printf("%s %v null\n", token.tokenType, token.lexeme)
+			}
 		}
 	}
 }
