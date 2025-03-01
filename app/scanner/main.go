@@ -29,6 +29,7 @@ const (
 	GREATER_EQUAL TokenType = "GREATER_EQUAL"
 	LESS          TokenType = "LESS"
 	LESS_EQUAL    TokenType = "LESS_EQUAL"
+	SLASH         TokenType = "SLASH"
 )
 
 type Scanner struct {
@@ -74,6 +75,17 @@ func NextToken(s *Scanner) (*Token, error) {
 			return NewToken(BANG_EQUAL, "!="), nil
 		}
 		return NewToken(BANG, "!"), nil
+	case '/':
+		if len(s.fileContents) > s.currentIdx && rune(s.fileContents[s.currentIdx]) == '/' {
+			s.currentIdx++
+			for s.currentIdx < len(s.fileContents) && rune(s.fileContents[s.currentIdx]) != '\n' {
+				s.currentIdx++
+			}
+			return nil, nil
+		}
+
+		return NewToken(SLASH, "/"), nil
+
 	case '.':
 		return NewToken(DOT, "."), nil
 	case ',':
