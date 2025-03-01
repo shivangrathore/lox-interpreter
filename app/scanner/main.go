@@ -20,6 +20,7 @@ const (
 	PLUS        TokenType = "PLUS"
 	SEMICOLON   TokenType = "SEMICOLON"
 	STAR        TokenType = "STAR"
+
 	// One or two character tokens
 	BANG          TokenType = "BANG"
 	BANG_EQUAL    TokenType = "BANG_EQUAL"
@@ -83,8 +84,10 @@ func NextToken(s *Scanner) (*Token, error) {
 			}
 			return nil, nil
 		}
-
 		return NewToken(SLASH, "/"), nil
+
+	case '\t', ' ':
+		return nil, nil
 
 	case '.':
 		return NewToken(DOT, "."), nil
