@@ -43,7 +43,7 @@ type Scanner struct {
 
 type Token struct {
 	tokenType TokenType
-	lexeme    interface{}
+	lexeme    string
 }
 
 func (s *Scanner) ExitCode() int {
@@ -54,7 +54,7 @@ func NewScanner(fileContents []byte) *Scanner {
 	return &Scanner{fileContents: fileContents, currentIdx: 0, exitCode: 0, lines: 1}
 }
 
-func NewToken(tokenType TokenType, lexeme interface{}) *Token {
+func NewToken(tokenType TokenType, lexeme string) *Token {
 	return &Token{tokenType: tokenType, lexeme: lexeme}
 }
 
