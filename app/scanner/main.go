@@ -5,23 +5,6 @@ import (
 	"os"
 )
 
-// const (
-// 	LEFT_PAREN  rune   = '('
-// 	RIGHT_PAREN rune   = ')'
-// 	LEFT_BRACE  rune   = '{'
-// 	RIGHT_BRACE rune   = '}'
-// 	STAR        rune   = '*'
-// 	DOT         rune   = '.'
-// 	COMMA       rune   = ','
-// 	PLUS        rune   = '+'
-// 	MINUS       rune   = '-'
-// 	SEMICOLON   rune   = ';'
-// 	EQUAL       rune   = '='
-// 	EQUAL_EQUAL string = "=="
-// 	BANG        rune   = '!'
-// 	BANG_EQUAL  string = "!="
-// )
-
 type Scanner struct {
 	fileContents []byte
 	currentIdx   int
@@ -80,6 +63,18 @@ func NextToken(s *Scanner) *Token {
 		return NewToken("RIGHT_BRACE", "}")
 	case '*':
 		return NewToken("STAR", "*")
+	case '<':
+		if len(s.fileContents) > s.currentIdx && rune(s.fileContents[s.currentIdx]) == '=' {
+			s.currentIdx++
+			return NewToken("LESS_EQUAL", "<=")
+		}
+		return NewToken("LESS", "<")
+	case '>':
+		if len(s.fileContents) > s.currentIdx && rune(s.fileContents[s.currentIdx]) == '=' {
+			s.currentIdx++
+			return NewToken("GREATER_EQUAL", ">=")
+		}
+		return NewToken("GREATER", ">")
 
 	default:
 		fmt.Fprintf(os.Stderr, "[line %d] Error: Unexpected character: %c\n", s.lines, current)
