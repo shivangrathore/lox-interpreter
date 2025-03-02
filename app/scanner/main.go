@@ -274,6 +274,7 @@ func (s *Scanner) scanToken() {
 			return
 		}
 		fmt.Fprintf(os.Stderr, "[line %d] Error: Unexpected character: %c\n", s.lines, r)
+		s.exitCode = 65
 	}
 }
 
