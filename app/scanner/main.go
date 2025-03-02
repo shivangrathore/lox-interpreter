@@ -39,6 +39,21 @@ const (
 	NUMBER        TokenType = "NUMBER"
 	IDENTIFIER    TokenType = "IDENTIFIER"
 	CLASS         TokenType = "CLASS"
+	AND           TokenType = "AND"
+	OR            TokenType = "OR"
+	IF            TokenType = "IF"
+	ELSE          TokenType = "ELSE"
+	FUN           TokenType = "FUN"
+	FOR           TokenType = "FOR"
+	NIL           TokenType = "NIL"
+	TRUE          TokenType = "TRUE"
+	FALSE         TokenType = "FALSE"
+	PRINT         TokenType = "PRINT"
+	RETURN        TokenType = "RETURN"
+	SUPER         TokenType = "SUPER"
+	THIS          TokenType = "THIS"
+	VAR           TokenType = "VAR"
+	WHILE         TokenType = "WHILE"
 )
 
 func singleCharacters(c rune) TokenType {
@@ -70,6 +85,33 @@ func matchOperators(s string) TokenType {
 		"/":  SLASH,
 	}
 	return operators[s]
+}
+
+func matchKeywords(s string) TokenType {
+	var keywords map[string]TokenType = map[string]TokenType{
+		"class":  CLASS,
+		"and":    AND,
+		"or":     OR,
+		"if":     IF,
+		"else":   ELSE,
+		"fun":    FUN,
+		"for":    FOR,
+		"nil":    NIL,
+		"true":   TRUE,
+		"false":  FALSE,
+		"print":  PRINT,
+		"return": RETURN,
+		"super":  SUPER,
+		"this":   THIS,
+		"var":    VAR,
+		"while":  WHILE,
+	}
+
+	tt, exists := keywords[s]
+	if exists {
+		return tt
+	}
+	return IDENTIFIER
 }
 
 type Scanner struct {
@@ -195,12 +237,7 @@ func (s *Scanner) scanIdentifier(r rune) {
 		char, _ := s.advance()
 		lexeme += string(char)
 	}
-	switch lexeme {
-	case "class":
-		s.addToken(CLASS, lexeme, nil)
-	default:
-		s.addToken(IDENTIFIER, lexeme, nil)
-	}
+	s.addToken(matchKeywords(lexeme), lexeme, nil)
 }
 
 func NewScanner(contents []byte) *Scanner {
