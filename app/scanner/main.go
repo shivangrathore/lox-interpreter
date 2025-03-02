@@ -256,6 +256,14 @@ func (s *Scanner) scanToken() {
 		s.scanString()
 	case '(', ')', '{', '}', ',', '.', '-', '+', ';', '*':
 		s.addToken(singleCharacters(r), string(r), nil)
+	case '/':
+		if s.match('/') {
+			for s.peak() != '\n' && !s.isAtEnd() {
+				s.advance()
+			}
+		} else {
+			s.addToken(SLASH, "/", nil)
+		}
 	default:
 		if utils.IsDigit(r) {
 			s.scanNumber(r)
