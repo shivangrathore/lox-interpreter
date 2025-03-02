@@ -2,11 +2,10 @@ package scanner
 
 import (
 	"fmt"
+	"github.com/codecrafters-io/interpreter-starter-go/app/utils"
 	"os"
 	"strings"
 	"unicode/utf8"
-
-	"github.com/codecrafters-io/interpreter-starter-go/app/utils"
 )
 
 // Token Type
@@ -39,6 +38,7 @@ const (
 	STRING        TokenType = "STRING"
 	NUMBER        TokenType = "NUMBER"
 	IDENTIFIER    TokenType = "IDENTIFIER"
+	CLASS         TokenType = "CLASS"
 )
 
 func singleCharacters(c rune) TokenType {
@@ -195,7 +195,12 @@ func (s *Scanner) scanIdentifier(r rune) {
 		char, _ := s.advance()
 		lexeme += string(char)
 	}
-	s.addToken(IDENTIFIER, lexeme, nil)
+	switch lexeme {
+	case "class":
+		s.addToken(CLASS, lexeme, nil)
+	default:
+		s.addToken(IDENTIFIER, lexeme, nil)
+	}
 }
 
 func NewScanner(contents []byte) *Scanner {
