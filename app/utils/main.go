@@ -1,10 +1,9 @@
 package utils
 
 func IsDigit(c rune) bool {
-	switch c {
-	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-		return true
-	default:
-		return false
-	}
+	return '0' <= c && c <= '9'
+}
+
+func IsAlpha(c rune) bool {
+	return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')
 }

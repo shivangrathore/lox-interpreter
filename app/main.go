@@ -2,9 +2,8 @@ package main
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/codecrafters-io/interpreter-starter-go/app/scanner"
+	"os"
 )
 
 func main() {

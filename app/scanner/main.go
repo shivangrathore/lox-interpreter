@@ -36,6 +36,7 @@ const (
 	SLASH         TokenType = "SLASH"
 	STRING        TokenType = "STRING"
 	NUMBER        TokenType = "NUMBER"
+	IDENTIFIER    TokenType = "IDENTIFIER"
 )
 
 type Scanner struct {
@@ -66,15 +67,78 @@ func NewToken(tokenType TokenType, lexeme string, literal *string) *Token {
 func NextToken(s *Scanner) (*Token, error) {
 	current := rune(s.fileContents[s.currentIdx])
 	s.currentIdx++
-	switch current {
-	case '=':
+	if current == '=' {
 		if len(s.fileContents) > s.currentIdx && rune(s.fileContents[s.currentIdx]) == '=' {
 			s.currentIdx++
 			return NewToken(EQUAL_EQUAL, "==", nil), nil
 		}
 		return NewToken(EQUAL, "=", nil), nil
-
-	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+	} else if current == '\n' {
+		s.lines++
+		return nil, nil
+	} else if current == '!' {
+		if len(s.fileContents) > s.currentIdx && rune(s.fileContents[s.currentIdx]) == '=' {
+			s.currentIdx++
+			return NewToken(BANG_EQUAL, "!=", nil), nil
+		}
+		return NewToken(BANG, "!", nil), nil
+	} else if current == '/' {
+		if len(s.fileContents) > s.currentIdx && rune(s.fileContents[s.currentIdx]) == '/' {
+			s.currentIdx++
+			for s.currentIdx < len(s.fileContents) && rune(s.fileContents[s.currentIdx]) != '\n' {
+				s.currentIdx++
+			}
+			return nil, nil
+		}
+		return NewToken(SLASH, "/", nil), nil
+	} else if current == '\t' || current == ' ' {
+		return nil, nil
+	} else if current == '"' {
+		currStr := ""
+		for s.currentIdx < len(s.fileContents) {
+			char := rune(s.fileContents[s.currentIdx])
+			s.currentIdx++
+			if char == '"' {
+				return NewToken(STRING, fmt.Sprintf("\"%s\"", currStr), &currStr), nil
+			} else if char == '\n' {
+				return nil, fmt.Errorf("[line %d] Error: Unterminated string.\n", s.lines)
+			}
+			currStr += string(char)
+		}
+		return nil, fmt.Errorf("[line %d] Error: Unterminated string.\n", s.lines)
+	} else if current == '.' {
+		return NewToken(DOT, ".", nil), nil
+	} else if current == ',' {
+		return NewToken(COMMA, ",", nil), nil
+	} else if current == '+' {
+		return NewToken(PLUS, "+", nil), nil
+	} else if current == '-' {
+		return NewToken(MINUS, "-", nil), nil
+	} else if current == ';' {
+		return NewToken(SEMICOLON, ";", nil), nil
+	} else if current == '(' {
+		return NewToken(LEFT_PAREN, "(", nil), nil
+	} else if current == ')' {
+		return NewToken(RIGHT_PAREN, ")", nil), nil
+	} else if current == '{' {
+		return NewToken(LEFT_BRACE, "{", nil), nil
+	} else if current == '}' {
+		return NewToken(RIGHT_BRACE, "}", nil), nil
+	} else if current == '*' {
+		return NewToken(STAR, "*", nil), nil
+	} else if current == '<' {
+		if len(s.fileContents) > s.currentIdx && rune(s.fileContents[s.currentIdx]) == '=' {
+			s.currentIdx++
+			return NewToken(LESS_EQUAL, "<=", nil), nil
+		}
+		return NewToken(LESS, "<", nil), nil
+	} else if current == '>' {
+		if len(s.fileContents) > s.currentIdx && rune(s.fileContents[s.currentIdx]) == '=' {
+			s.currentIdx++
+			return NewToken(GREATER_EQUAL, ">=", nil), nil
+		}
+		return NewToken(GREATER, ">", nil), nil
+	} else if utils.IsDigit(current) {
 		lexeme := string(current)
 		isDec := false
 		for len(s.fileContents) > s.currentIdx {
@@ -91,120 +155,83 @@ func NextToken(s *Scanner) (*Token, error) {
 			lexeme += string(digChar)
 			s.currentIdx++
 		}
-		integer := 0.0
-		fraction := 0.0
-		fractionDigits := 1.0
-		isFraction := false
-		for _, c := range lexeme {
-			if c == '.' {
-				isFraction = true
-				continue
-			}
-			dig := float64(9 - (int('9') - int(c)))
-			if isFraction {
-				fractionDigits *= 10
-				fraction = fraction*10 + dig
-			} else {
-				integer = integer*10 + dig
-			}
-		}
+		// TODO: Might need later
 
-		literal := integer + (fraction / fractionDigits)
+		// integer := 0.0
+		// fraction := 0.0
+		// fractionDigits := 1.0
+		// isFraction := false
+		// for _, c := range lexeme {
+		// 	if c == '.' {
+		// 		isFraction = true
+		// 		continue
+		// 	}
+		// 	dig := float64(9 - (int('9') - int(c)))
+		// 	if isFraction {
+		// 		fractionDigits *= 10
+		// 		fraction = fraction*10 + dig
+		// 	} else {
+		// 		integer = integer*10 + dig
+		// 	}
+		// }
+
+		// literal := integer + (fraction / fractionDigits)
+		// literalString := ""
+		// {
+		// 	str := fmt.Sprintf("%f", literal)
+		// 	parts := strings.Split(str, ".")
+		// 	if len(parts) == 1 {
+		// 		literalString = parts[0] + ".0"
+		// 		return NewToken(NUMBER, lexeme, &literalString), nil
+		// 	}
+		//
+		// 	integerPart := parts[0]
+		// 	fractionPart := parts[1]
+		//
+		// 	fractionPart = strings.TrimRight(fractionPart, "0")
+		//
+		// 	if len(fractionPart) == 0 {
+		// 		literalString = integerPart + ".0"
+		// 		return NewToken(NUMBER, lexeme, &literalString), nil
+		// 	} else {
+		// 		literalString = integerPart + "." + fractionPart
+		// 		return NewToken(NUMBER, lexeme, &literalString), nil
+		// 	}
+		// }
 		literalString := ""
-		{
-			str := fmt.Sprintf("%f", literal)
-			parts := strings.Split(str, ".")
-			if len(parts) == 1 {
-				literalString = parts[0] + ".0"
-				return NewToken(NUMBER, lexeme, &literalString), nil
+		parts := strings.Split(lexeme, ".")
+		if len(parts) == 1 {
+			integerPart := strings.TrimLeft(parts[0], "0")
+			if len(integerPart) == 0 {
+				integerPart = "0"
 			}
-
-			integerPart := parts[0]
-			fractionPart := parts[1]
-
-			fractionPart = strings.TrimRight(fractionPart, "0")
-
-			if len(fractionPart) == 0 {
-				literalString = integerPart + ".0"
-				return NewToken(NUMBER, lexeme, &literalString), nil
-			} else {
-				literalString = integerPart + "." + fractionPart
-				return NewToken(NUMBER, lexeme, &literalString), nil
-			}
+			literalString = integerPart + ".0"
+			return NewToken(NUMBER, lexeme, &literalString), nil
 		}
+		intergerPart := strings.TrimLeft(parts[0], "0")
+		fractionPart := strings.TrimRight(parts[1], "0")
 
-	case '\n':
-		s.lines++
-		return nil, nil
-
-	case '!':
-		if len(s.fileContents) > s.currentIdx && rune(s.fileContents[s.currentIdx]) == '=' {
-			s.currentIdx++
-			return NewToken(BANG_EQUAL, "!=", nil), nil
+		if len(intergerPart) == 0 {
+			intergerPart = "0"
 		}
-		return NewToken(BANG, "!", nil), nil
-
-	case '/':
-		if len(s.fileContents) > s.currentIdx && rune(s.fileContents[s.currentIdx]) == '/' {
-			s.currentIdx++
-			for s.currentIdx < len(s.fileContents) && rune(s.fileContents[s.currentIdx]) != '\n' {
-				s.currentIdx++
-			}
-			return nil, nil
+		if len(fractionPart) == 0 {
+			fractionPart = "0"
 		}
-		return NewToken(SLASH, "/", nil), nil
-
-	case '\t', ' ':
-		return nil, nil
-
-	case '"':
-		currStr := ""
+		literalString = intergerPart + "." + fractionPart
+		return NewToken(NUMBER, lexeme, &literalString), nil
+	} else if utils.IsAlpha(current) || current == '_' {
+		lexeme := string(current)
 		for s.currentIdx < len(s.fileContents) {
-			char := rune(s.fileContents[s.currentIdx])
-			s.currentIdx++
-			if char == '"' {
-				return NewToken(STRING, fmt.Sprintf("\"%s\"", currStr), &currStr), nil
-			} else if char == '\n' {
-				return nil, fmt.Errorf("[line %d] Error: Unterminated string.\n", s.lines)
+			current = rune(s.fileContents[s.currentIdx])
+			if utils.IsAlpha(current) || utils.IsDigit(current) || current == '_' {
+				lexeme += string(current)
+				s.currentIdx++
+			} else {
+				break
 			}
-			currStr += string(char)
 		}
-		return nil, fmt.Errorf("[line %d] Error: Unterminated string.\n", s.lines)
-
-	case '.':
-		return NewToken(DOT, ".", nil), nil
-	case ',':
-		return NewToken(COMMA, ",", nil), nil
-	case '+':
-		return NewToken(PLUS, "+", nil), nil
-	case '-':
-		return NewToken(MINUS, "-", nil), nil
-	case ';':
-		return NewToken(SEMICOLON, ";", nil), nil
-	case '(':
-		return NewToken(LEFT_PAREN, "(", nil), nil
-	case ')':
-		return NewToken(RIGHT_PAREN, ")", nil), nil
-	case '{':
-		return NewToken(LEFT_BRACE, "{", nil), nil
-	case '}':
-		return NewToken(RIGHT_BRACE, "}", nil), nil
-	case '*':
-		return NewToken(STAR, "*", nil), nil
-	case '<':
-		if len(s.fileContents) > s.currentIdx && rune(s.fileContents[s.currentIdx]) == '=' {
-			s.currentIdx++
-			return NewToken(LESS_EQUAL, "<=", nil), nil
-		}
-		return NewToken(LESS, "<", nil), nil
-	case '>':
-		if len(s.fileContents) > s.currentIdx && rune(s.fileContents[s.currentIdx]) == '=' {
-			s.currentIdx++
-			return NewToken(GREATER_EQUAL, ">=", nil), nil
-		}
-		return NewToken(GREATER, ">", nil), nil
-
-	default:
+		return NewToken(IDENTIFIER, lexeme, nil), nil
+	} else {
 		return nil, fmt.Errorf("[line %d] Error: Unexpected character: %c\n", s.lines, current)
 	}
 }
