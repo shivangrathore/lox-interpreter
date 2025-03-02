@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/codecrafters-io/interpreter-starter-go/app/utils"
 	"os"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 )
@@ -119,6 +120,7 @@ type Scanner struct {
 	current  int
 	exitCode int
 	lines    int
+	start    int
 	tokens   []Token
 }
 
@@ -130,10 +132,27 @@ type Token struct {
 }
 
 func (t Token) String() string {
+	literal := ""
 	if t.literal == nil {
-		return fmt.Sprintf("%s %s null", t.tokenType, t.lexeme)
+		literal = "null"
+	} else if t.tokenType == NUMBER {
+		parts := strings.Split(fmt.Sprintf("%f", t.literal), ".")
+		integerPart := parts[0]
+		decimalPart := parts[1]
+
+		integerPart = strings.TrimLeft(integerPart, "0")
+		decimalPart = strings.TrimRight(decimalPart, "0")
+		if len(decimalPart) == 0 {
+			decimalPart = "0"
+		}
+		if len(integerPart) == 0 {
+			integerPart = "0"
+		}
+		literal = fmt.Sprintf("%s.%s", integerPart, decimalPart)
+	} else {
+		literal = fmt.Sprintf("%v", t.literal)
 	}
-	return fmt.Sprintf("%s %s %v", t.tokenType, t.lexeme, t.literal)
+	return fmt.Sprintf("%s %s %s", t.tokenType, t.lexeme, literal)
 }
 
 func (s *Scanner) ExitCode() int {
@@ -204,56 +223,42 @@ func (s *Scanner) scanString() {
 
 }
 
-func (s *Scanner) scanNumber(r rune) {
-	lexeme := string(r)
-	for !s.isAtEnd() && utils.IsDigit(s.peak()) {
-		char, _ := s.advance()
-		lexeme += string(char)
-	}
-	if s.peak() == '.' && utils.IsDigit(rune(s.source[s.current+1])) {
-		char, _ := s.advance()
-		lexeme += string(char)
-		for !s.isAtEnd() && utils.IsDigit(s.peak()) {
-			char, _ := s.advance()
-			lexeme += string(char)
+func (s *Scanner) scanNumber() {
+	isDecimal := false
+	for !s.isAtEnd() {
+		if utils.IsDigit(s.peak()) {
+			s.advance()
+		} else if s.peak() == '.' && !isDecimal && utils.IsDigit(rune(s.source[s.current+1])) {
+			isDecimal = true
+			s.advance()
+		} else {
+			break
 		}
 	}
-	parts := strings.Split(lexeme, ".")
-	integerPart := ""
-	fractionPart := ""
-	if len(parts) == 1 {
-		integerPart = strings.TrimLeft(parts[0], "0")
-	} else {
-		integerPart = strings.TrimLeft(parts[0], "0")
-		fractionPart = strings.TrimRight(parts[1], "0")
-	}
 
-	if len(integerPart) == 0 {
-		integerPart = "0"
+	lexeme := string(s.source[s.start:s.current])
+	value, err := strconv.ParseFloat(lexeme, 64)
+	if err != nil {
+		s.setExitCode(65)
+		fmt.Fprintf(os.Stderr, "[line %d] Error: Invalid number: %s\n", s.lines, lexeme)
+		return
 	}
-
-	if len(fractionPart) == 0 {
-		fractionPart = "0"
-	}
-
-	literal := integerPart + "." + fractionPart
-	s.addToken(NUMBER, lexeme, literal)
+	s.addToken(NUMBER, lexeme, value)
 }
-
-func (s *Scanner) scanIdentifier(r rune) {
-	lexeme := string(r)
+func (s *Scanner) scanIdentifier() {
 	for !s.isAtEnd() && (utils.IsAlpha(s.peak()) || utils.IsDigit(s.peak())) {
-		char, _ := s.advance()
-		lexeme += string(char)
+		s.advance()
 	}
+	lexeme := string(s.source[s.start:s.current])
 	s.addToken(matchKeywords(lexeme), lexeme, nil)
 }
 
 func NewScanner(contents []byte) *Scanner {
-	return &Scanner{source: contents, current: 0, exitCode: 0, lines: 1}
+	return &Scanner{source: contents, current: 0, exitCode: 0, lines: 1, start: 0, tokens: []Token{}}
 }
 
 func (s *Scanner) scanToken() {
+	s.start = s.current
 	r, _ := s.advance()
 	switch r {
 	case '<', '>', '=', '!':
@@ -275,11 +280,11 @@ func (s *Scanner) scanToken() {
 		}
 	default:
 		if utils.IsDigit(r) {
-			s.scanNumber(r)
+			s.scanNumber()
 			return
 		}
 		if utils.IsAlpha(r) {
-			s.scanIdentifier(r)
+			s.scanIdentifier()
 			return
 		}
 		s.setExitCode(65)
