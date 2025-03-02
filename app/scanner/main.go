@@ -227,6 +227,16 @@ func (s *Scanner) scanString() {
 	s.error("Unterminated string.")
 }
 
+func (s *Scanner) scanSlash() {
+	if s.match('/') {
+		for s.peak() != '\n' && !s.isAtEnd() {
+			s.advance()
+		}
+	} else {
+		s.addToken(SLASH, "/", nil)
+	}
+}
+
 func (s *Scanner) scanNumber() {
 	isDecimal := false
 	for !s.isAtEnd() {
@@ -274,13 +284,7 @@ func (s *Scanner) scanToken() {
 	case '(', ')', '{', '}', ',', '.', '-', '+', ';', '*':
 		s.addToken(singleCharacters(r), string(r), nil)
 	case '/':
-		if s.match('/') {
-			for s.peak() != '\n' && !s.isAtEnd() {
-				s.advance()
-			}
-		} else {
-			s.addToken(SLASH, "/", nil)
-		}
+		s.scanSlash()
 	default:
 		if utils.IsDigit(r) {
 			s.scanNumber()
