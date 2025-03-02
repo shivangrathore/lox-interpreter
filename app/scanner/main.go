@@ -177,6 +177,12 @@ func (s *Scanner) operators(r rune) {
 	s.addToken(matchOperators(op), op, nil)
 }
 
+func (s *Scanner) setExitCode(code int) {
+	if s.exitCode == 0 {
+		s.exitCode = code
+	}
+}
+
 func (s *Scanner) scanString() {
 	str := ""
 	for !s.isAtEnd() {
@@ -185,8 +191,8 @@ func (s *Scanner) scanString() {
 			s.addToken(STRING, fmt.Sprintf("\"%s\"", str), str)
 			return
 		} else if rune(s.source[s.current]) == '\n' {
+			s.setExitCode(65)
 			fmt.Fprintf(os.Stderr, "[line %d] Error: Unterminated string.\n", s.lines)
-			s.exitCode = 65
 			return
 		} else {
 			char, _ := s.advance()
@@ -273,8 +279,8 @@ func (s *Scanner) scanToken() {
 			s.scanIdentifier(r)
 			return
 		}
+		s.setExitCode(65)
 		fmt.Fprintf(os.Stderr, "[line %d] Error: Unexpected character: %c\n", s.lines, r)
-		s.exitCode = 65
 	}
 }
 

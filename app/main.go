@@ -29,4 +29,5 @@ func main() {
 	tokenScanner := scanner.NewScanner(rawfileContents)
 	tokenScanner.Scan()
 	os.Exit(tokenScanner.ExitCode())
+
 }
