@@ -199,6 +199,9 @@ func (s *Scanner) scanString() {
 			str += string(char)
 		}
 	}
+	s.setExitCode(65)
+	fmt.Fprintf(os.Stderr, "[line %d] Error: Unterminated string.\n", s.lines)
+
 }
 
 func (s *Scanner) scanNumber(r rune) {
