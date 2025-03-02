@@ -5,5 +5,5 @@ func IsDigit(c rune) bool {
 }
 
 func IsAlpha(c rune) bool {
-	return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')
+	return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || c == '_'
 }

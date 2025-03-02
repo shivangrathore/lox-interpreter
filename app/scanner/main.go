@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/codecrafters-io/interpreter-starter-go/app/utils"
 )
@@ -23,6 +24,7 @@ const (
 	PLUS        TokenType = "PLUS"
 	SEMICOLON   TokenType = "SEMICOLON"
 	STAR        TokenType = "STAR"
+	EOF         TokenType = "EOF"
 
 	// One or two character tokens
 	BANG          TokenType = "BANG"
@@ -39,215 +41,208 @@ const (
 	IDENTIFIER    TokenType = "IDENTIFIER"
 )
 
+func singleCharacters(c rune) TokenType {
+	var chars map[rune]TokenType = map[rune]TokenType{
+		'(': LEFT_PAREN,
+		')': RIGHT_PAREN,
+		'{': LEFT_BRACE,
+		'}': RIGHT_BRACE,
+		',': COMMA,
+		'.': DOT,
+		'-': MINUS,
+		'+': PLUS,
+		';': SEMICOLON,
+		'*': STAR,
+	}
+	return chars[c]
+}
+
+func matchOperators(s string) TokenType {
+	var operators map[string]TokenType = map[string]TokenType{
+		"!":  BANG,
+		"!=": BANG_EQUAL,
+		"=":  EQUAL,
+		"==": EQUAL_EQUAL,
+		">":  GREATER,
+		">=": GREATER_EQUAL,
+		"<":  LESS,
+		"<=": LESS_EQUAL,
+		"/":  SLASH,
+	}
+	return operators[s]
+}
+
 type Scanner struct {
-	fileContents []byte
-	currentIdx   int
-	exitCode     int
-	lines        int
+	source   []byte
+	current  int
+	exitCode int
+	lines    int
+	tokens   []Token
 }
 
 type Token struct {
 	tokenType TokenType
 	lexeme    string
-	literal   *string
+	literal   interface{}
+	line      int
+}
+
+func (t Token) String() string {
+	if t.literal == nil {
+		return fmt.Sprintf("%s %s null", t.tokenType, t.lexeme)
+	}
+	return fmt.Sprintf("%s %s %v", t.tokenType, t.lexeme, t.literal)
 }
 
 func (s *Scanner) ExitCode() int {
 	return s.exitCode
 }
 
-func NewScanner(fileContents []byte) *Scanner {
-	return &Scanner{fileContents: fileContents, currentIdx: 0, exitCode: 0, lines: 1}
+func (s *Scanner) isAtEnd() bool {
+	return s.current >= len(s.source)
 }
 
-func NewToken(tokenType TokenType, lexeme string, literal *string) *Token {
-	return &Token{tokenType: tokenType, lexeme: lexeme, literal: literal}
+func (s *Scanner) advance() (rune, int) {
+	if s.isAtEnd() {
+		return 0, 0
+	}
+	r, size := utf8.DecodeRune(s.source[s.current:])
+	s.current += size
+	return r, size
 }
 
-func NextToken(s *Scanner) (*Token, error) {
-	current := rune(s.fileContents[s.currentIdx])
-	s.currentIdx++
-	if current == '=' {
-		if len(s.fileContents) > s.currentIdx && rune(s.fileContents[s.currentIdx]) == '=' {
-			s.currentIdx++
-			return NewToken(EQUAL_EQUAL, "==", nil), nil
-		}
-		return NewToken(EQUAL, "=", nil), nil
-	} else if current == '\n' {
-		s.lines++
-		return nil, nil
-	} else if current == '!' {
-		if len(s.fileContents) > s.currentIdx && rune(s.fileContents[s.currentIdx]) == '=' {
-			s.currentIdx++
-			return NewToken(BANG_EQUAL, "!=", nil), nil
-		}
-		return NewToken(BANG, "!", nil), nil
-	} else if current == '/' {
-		if len(s.fileContents) > s.currentIdx && rune(s.fileContents[s.currentIdx]) == '/' {
-			s.currentIdx++
-			for s.currentIdx < len(s.fileContents) && rune(s.fileContents[s.currentIdx]) != '\n' {
-				s.currentIdx++
-			}
-			return nil, nil
-		}
-		return NewToken(SLASH, "/", nil), nil
-	} else if current == '\t' || current == ' ' {
-		return nil, nil
-	} else if current == '"' {
-		currStr := ""
-		for s.currentIdx < len(s.fileContents) {
-			char := rune(s.fileContents[s.currentIdx])
-			s.currentIdx++
-			if char == '"' {
-				return NewToken(STRING, fmt.Sprintf("\"%s\"", currStr), &currStr), nil
-			} else if char == '\n' {
-				return nil, fmt.Errorf("[line %d] Error: Unterminated string.\n", s.lines)
-			}
-			currStr += string(char)
-		}
-		return nil, fmt.Errorf("[line %d] Error: Unterminated string.\n", s.lines)
-	} else if current == '.' {
-		return NewToken(DOT, ".", nil), nil
-	} else if current == ',' {
-		return NewToken(COMMA, ",", nil), nil
-	} else if current == '+' {
-		return NewToken(PLUS, "+", nil), nil
-	} else if current == '-' {
-		return NewToken(MINUS, "-", nil), nil
-	} else if current == ';' {
-		return NewToken(SEMICOLON, ";", nil), nil
-	} else if current == '(' {
-		return NewToken(LEFT_PAREN, "(", nil), nil
-	} else if current == ')' {
-		return NewToken(RIGHT_PAREN, ")", nil), nil
-	} else if current == '{' {
-		return NewToken(LEFT_BRACE, "{", nil), nil
-	} else if current == '}' {
-		return NewToken(RIGHT_BRACE, "}", nil), nil
-	} else if current == '*' {
-		return NewToken(STAR, "*", nil), nil
-	} else if current == '<' {
-		if len(s.fileContents) > s.currentIdx && rune(s.fileContents[s.currentIdx]) == '=' {
-			s.currentIdx++
-			return NewToken(LESS_EQUAL, "<=", nil), nil
-		}
-		return NewToken(LESS, "<", nil), nil
-	} else if current == '>' {
-		if len(s.fileContents) > s.currentIdx && rune(s.fileContents[s.currentIdx]) == '=' {
-			s.currentIdx++
-			return NewToken(GREATER_EQUAL, ">=", nil), nil
-		}
-		return NewToken(GREATER, ">", nil), nil
-	} else if utils.IsDigit(current) {
-		lexeme := string(current)
-		isDec := false
-		for len(s.fileContents) > s.currentIdx {
-			if rune(s.fileContents[s.currentIdx]) == '.' {
-				if len(s.fileContents) > s.currentIdx+1 && utils.IsDigit(rune(s.fileContents[s.currentIdx+1])) && !isDec {
-					isDec = true
-				} else {
-					break
-				}
-			} else if !utils.IsDigit(rune(s.fileContents[s.currentIdx])) {
-				break
-			}
-			digChar := rune(s.fileContents[s.currentIdx])
-			lexeme += string(digChar)
-			s.currentIdx++
-		}
-		// TODO: Might need later
+func (s *Scanner) peak() rune {
+	if s.isAtEnd() {
+		return 0
+	}
+	r, _ := utf8.DecodeRune(s.source[s.current:])
+	return r
+}
 
-		// integer := 0.0
-		// fraction := 0.0
-		// fractionDigits := 1.0
-		// isFraction := false
-		// for _, c := range lexeme {
-		// 	if c == '.' {
-		// 		isFraction = true
-		// 		continue
-		// 	}
-		// 	dig := float64(9 - (int('9') - int(c)))
-		// 	if isFraction {
-		// 		fractionDigits *= 10
-		// 		fraction = fraction*10 + dig
-		// 	} else {
-		// 		integer = integer*10 + dig
-		// 	}
-		// }
+func (s *Scanner) addToken(tokenType TokenType, lexeme string, literal interface{}) {
+	s.tokens = append(s.tokens, Token{
+		tokenType: tokenType,
+		lexeme:    lexeme,
+		literal:   literal,
+	})
+}
 
-		// literal := integer + (fraction / fractionDigits)
-		// literalString := ""
-		// {
-		// 	str := fmt.Sprintf("%f", literal)
-		// 	parts := strings.Split(str, ".")
-		// 	if len(parts) == 1 {
-		// 		literalString = parts[0] + ".0"
-		// 		return NewToken(NUMBER, lexeme, &literalString), nil
-		// 	}
-		//
-		// 	integerPart := parts[0]
-		// 	fractionPart := parts[1]
-		//
-		// 	fractionPart = strings.TrimRight(fractionPart, "0")
-		//
-		// 	if len(fractionPart) == 0 {
-		// 		literalString = integerPart + ".0"
-		// 		return NewToken(NUMBER, lexeme, &literalString), nil
-		// 	} else {
-		// 		literalString = integerPart + "." + fractionPart
-		// 		return NewToken(NUMBER, lexeme, &literalString), nil
-		// 	}
-		// }
-		literalString := ""
-		parts := strings.Split(lexeme, ".")
-		if len(parts) == 1 {
-			integerPart := strings.TrimLeft(parts[0], "0")
-			if len(integerPart) == 0 {
-				integerPart = "0"
-			}
-			literalString = integerPart + ".0"
-			return NewToken(NUMBER, lexeme, &literalString), nil
-		}
-		intergerPart := strings.TrimLeft(parts[0], "0")
-		fractionPart := strings.TrimRight(parts[1], "0")
+func (s *Scanner) operators(r rune) {
+	op := string(r)
+	if s.match('=') {
+		op += "="
+	}
+	s.addToken(matchOperators(op), op, nil)
+}
 
-		if len(intergerPart) == 0 {
-			intergerPart = "0"
+func (s *Scanner) scanString() {
+	str := ""
+	for !s.isAtEnd() {
+		if s.peak() == '"' {
+			s.advance()
+			s.addToken(STRING, fmt.Sprintf("\"%s\"", str), str)
+			return
+		} else if rune(s.source[s.current]) == '\n' {
+			fmt.Fprintf(os.Stderr, "[line %d] Error: Unterminated string.\n", s.lines)
+			s.exitCode = 65
+			return
+		} else {
+			char, _ := s.advance()
+			str += string(char)
 		}
-		if len(fractionPart) == 0 {
-			fractionPart = "0"
-		}
-		literalString = intergerPart + "." + fractionPart
-		return NewToken(NUMBER, lexeme, &literalString), nil
-	} else if utils.IsAlpha(current) || current == '_' {
-		lexeme := string(current)
-		for s.currentIdx < len(s.fileContents) {
-			current = rune(s.fileContents[s.currentIdx])
-			if utils.IsAlpha(current) || utils.IsDigit(current) || current == '_' {
-				lexeme += string(current)
-				s.currentIdx++
-			} else {
-				break
-			}
-		}
-		return NewToken(IDENTIFIER, lexeme, nil), nil
-	} else {
-		return nil, fmt.Errorf("[line %d] Error: Unexpected character: %c\n", s.lines, current)
 	}
 }
 
-func (s *Scanner) Scan() {
-	for s.currentIdx < len(s.fileContents) {
-		token, err := NextToken(s)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v", err.Error())
-			s.exitCode = 65
-		} else if token != nil {
-			literal := "null"
-			if token.literal != nil {
-				literal = *token.literal
-			}
-			fmt.Printf("%s %s %s\n", token.tokenType, token.lexeme, literal)
+func (s *Scanner) scanNumber(r rune) {
+	lexeme := string(r)
+	for !s.isAtEnd() && utils.IsDigit(s.peak()) {
+		char, _ := s.advance()
+		lexeme += string(char)
+	}
+	if s.peak() == '.' && utils.IsDigit(rune(s.source[s.current+1])) {
+		char, _ := s.advance()
+		lexeme += string(char)
+		for !s.isAtEnd() && utils.IsDigit(s.peak()) {
+			char, _ := s.advance()
+			lexeme += string(char)
 		}
+	}
+	parts := strings.Split(lexeme, ".")
+	integerPart := ""
+	fractionPart := ""
+	if len(parts) == 1 {
+		integerPart = strings.TrimLeft(parts[0], "0")
+	} else {
+		integerPart = strings.TrimLeft(parts[0], "0")
+		fractionPart = strings.TrimRight(parts[1], "0")
+	}
+
+	if len(integerPart) == 0 {
+		integerPart = "0"
+	}
+
+	if len(fractionPart) == 0 {
+		fractionPart = "0"
+	}
+
+	literal := integerPart + "." + fractionPart
+	s.addToken(NUMBER, lexeme, literal)
+}
+
+func (s *Scanner) scanIdentifier(r rune) {
+	lexeme := string(r)
+	for !s.isAtEnd() && (utils.IsAlpha(s.peak()) || utils.IsDigit(s.peak())) {
+		char, _ := s.advance()
+		lexeme += string(char)
+	}
+	s.addToken(IDENTIFIER, lexeme, nil)
+}
+
+func NewScanner(contents []byte) *Scanner {
+	return &Scanner{source: contents, current: 0, exitCode: 0, lines: 1}
+}
+
+func (s *Scanner) scanToken() {
+	r, _ := s.advance()
+	switch r {
+	case '<', '>', '=', '!':
+		s.operators(r)
+	case '\n':
+		s.lines++
+	case ' ', '\r', '\t':
+	case '"':
+		s.scanString()
+	case '(', ')', '{', '}', ',', '.', '-', '+', ';', '*':
+		s.addToken(singleCharacters(r), string(r), nil)
+	default:
+		if utils.IsDigit(r) {
+			s.scanNumber(r)
+			return
+		}
+		if utils.IsAlpha(r) {
+			s.scanIdentifier(r)
+		}
+		fmt.Fprintf(os.Stderr, "[line %d] Error: Unexpected character: %c\n", s.lines, r)
+	}
+}
+
+func (s *Scanner) match(c rune) bool {
+	if s.current >= len(s.source) {
+		return false
+	}
+	if rune(s.source[s.current]) != c {
+		return false
+	}
+	s.current++
+	return true
+}
+
+func (s *Scanner) Scan() {
+	for !s.isAtEnd() {
+		s.scanToken()
+	}
+	s.addToken(EOF, "", nil)
+	for _, token := range s.tokens {
+		fmt.Println(token)
 	}
 }
