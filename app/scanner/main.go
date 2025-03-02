@@ -271,6 +271,7 @@ func (s *Scanner) scanToken() {
 		}
 		if utils.IsAlpha(r) {
 			s.scanIdentifier(r)
+			return
 		}
 		fmt.Fprintf(os.Stderr, "[line %d] Error: Unexpected character: %c\n", s.lines, r)
 	}
