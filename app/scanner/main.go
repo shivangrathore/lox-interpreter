@@ -39,22 +39,24 @@ const (
 	STRING        TokenType = "STRING"
 	NUMBER        TokenType = "NUMBER"
 	IDENTIFIER    TokenType = "IDENTIFIER"
-	CLASS         TokenType = "CLASS"
-	AND           TokenType = "AND"
-	OR            TokenType = "OR"
-	IF            TokenType = "IF"
-	ELSE          TokenType = "ELSE"
-	FUN           TokenType = "FUN"
-	FOR           TokenType = "FOR"
-	NIL           TokenType = "NIL"
-	TRUE          TokenType = "TRUE"
-	FALSE         TokenType = "FALSE"
-	PRINT         TokenType = "PRINT"
-	RETURN        TokenType = "RETURN"
-	SUPER         TokenType = "SUPER"
-	THIS          TokenType = "THIS"
-	VAR           TokenType = "VAR"
-	WHILE         TokenType = "WHILE"
+
+	// Keywords
+	CLASS  TokenType = "CLASS"
+	AND    TokenType = "AND"
+	OR     TokenType = "OR"
+	IF     TokenType = "IF"
+	ELSE   TokenType = "ELSE"
+	FUN    TokenType = "FUN"
+	FOR    TokenType = "FOR"
+	NIL    TokenType = "NIL"
+	TRUE   TokenType = "TRUE"
+	FALSE  TokenType = "FALSE"
+	PRINT  TokenType = "PRINT"
+	RETURN TokenType = "RETURN"
+	SUPER  TokenType = "SUPER"
+	THIS   TokenType = "THIS"
+	VAR    TokenType = "VAR"
+	WHILE  TokenType = "WHILE"
 )
 
 func singleCharacters(c rune) TokenType {
@@ -163,6 +165,11 @@ func (s *Scanner) isAtEnd() bool {
 	return s.current >= len(s.source)
 }
 
+func (s *Scanner) error(message string) {
+	s.setExitCode(65)
+	fmt.Fprintf(os.Stderr, "[line %d] Error: %s\n", s.lines, message)
+}
+
 func (s *Scanner) advance() (rune, int) {
 	if s.isAtEnd() {
 		return 0, 0
@@ -210,17 +217,14 @@ func (s *Scanner) scanString() {
 			s.addToken(STRING, fmt.Sprintf("\"%s\"", str), str)
 			return
 		} else if rune(s.source[s.current]) == '\n' {
-			s.setExitCode(65)
-			fmt.Fprintf(os.Stderr, "[line %d] Error: Unterminated string.\n", s.lines)
+			s.error("Unterminated string.")
 			return
 		} else {
 			char, _ := s.advance()
 			str += string(char)
 		}
 	}
-	s.setExitCode(65)
-	fmt.Fprintf(os.Stderr, "[line %d] Error: Unterminated string.\n", s.lines)
-
+	s.error("Unterminated string.")
 }
 
 func (s *Scanner) scanNumber() {
@@ -239,8 +243,7 @@ func (s *Scanner) scanNumber() {
 	lexeme := string(s.source[s.start:s.current])
 	value, err := strconv.ParseFloat(lexeme, 64)
 	if err != nil {
-		s.setExitCode(65)
-		fmt.Fprintf(os.Stderr, "[line %d] Error: Invalid number: %s\n", s.lines, lexeme)
+		s.error("Invalid number.")
 		return
 	}
 	s.addToken(NUMBER, lexeme, value)
@@ -287,8 +290,7 @@ func (s *Scanner) scanToken() {
 			s.scanIdentifier()
 			return
 		}
-		s.setExitCode(65)
-		fmt.Fprintf(os.Stderr, "[line %d] Error: Unexpected character: %c\n", s.lines, r)
+		s.error(fmt.Sprintf("Unexpected character: %c", r))
 	}
 }
 
